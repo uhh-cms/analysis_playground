@@ -322,12 +322,12 @@ config_2018.set_aux("keep_columns", DotDict.wrap({
         "Deepjet.pt", "Deepjet.eta", "Deepjet.btagDeepFlavB",
         "nMuon", "Muon.pt", "Muon.eta",
         "nElectron", "Electron.pt", "Electron.eta",
-        "LHEWeight.originalXWGTUP",
+        "mc_weight",
         "PV.npvs",
         "category_ids", "deterministic_seed",
     },
     "cf.MergeSelectionMasks": {
-        "LHEWeight.originalXWGTUP", "normalization_weight", "process_id", "category_ids", "cutflow.*",
+        "mc_weight", "normalization_weight", "process_id", "category_ids", "cutflow.*",
     },
 }))
 

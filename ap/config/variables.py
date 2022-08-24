@@ -14,10 +14,10 @@ def add_variables(config: od.Config) -> None:
     Adds all variables to a *config*.
     """
     config.add_variable(
-        name="lhe_weight",
-        expression="LHEWeight.originalXWGTUP",
+        name="mc_weight",
+        expression="mc_weight",
         binning=(200, -10, 10),
-        x_title="LHE weight",
+        x_title="MC weight",
     )
     config.add_variable(
         name="ht",

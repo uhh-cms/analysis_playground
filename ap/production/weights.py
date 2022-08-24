@@ -27,9 +27,9 @@ def top_pt_weights(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
         return events
 
     # save dummy, asymmetric top pt weights
-    set_ak_column(events, "top_pt_weight", ak.ones_like(events.event) * 1.0)
-    set_ak_column(events, "top_pt_weight_up", ak.ones_like(events.event) * 1.1)
-    set_ak_column(events, "top_pt_weight_down", ak.ones_like(events.event) * 1.0)
+    events = set_ak_column(events, "top_pt_weight", ak.ones_like(events.event) * 1.0)
+    events = set_ak_column(events, "top_pt_weight_up", ak.ones_like(events.event) * 1.1)
+    events = set_ak_column(events, "top_pt_weight_down", ak.ones_like(events.event) * 1.0)
 
     return events
 
@@ -45,13 +45,13 @@ def event_weights(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     might possibly change any of the weights.
     """
     # compute normalization weights
-    self[normalization_weights](events, **kwargs)
+    events = self[normalization_weights](events, **kwargs)
 
     # compute pu weights
-    self[pu_weights](events, **kwargs)
+    events = self[pu_weights](events, **kwargs)
 
     # compute top pt weights
-    self[top_pt_weights](events, **kwargs)
+    events = self[top_pt_weights](events, **kwargs)
 
     return events
 

@@ -5,7 +5,7 @@ Selection methods for testing purposes.
 """
 
 from collections import defaultdict
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union, Tuple
 
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column, Route
@@ -97,12 +97,13 @@ def var_HT(self: Selector, events: ak.Array, **kwargs) -> ak.Array:
 @selector(
     uses={var_nJet, var_HT, "Jet.pt"},
     produces={"cutflow.n_jet", "cutflow.ht", "cutflow.jet1_pt"},
-    exposed=True,
 )
-def cutflow_features(self: Selector, events: ak.Array, **kwargs) -> None:
-    set_ak_column(events, "cutflow.n_jet", self[var_nJet](events))
-    set_ak_column(events, "cutflow.ht", self[var_HT](events))
-    set_ak_column(events, "cutflow.jet1_pt", Route("Jet.pt[:,0]").apply(events, EMPTY_FLOAT))
+def cutflow_features(self: Selector, events: ak.Array, **kwargs) -> ak.Array:
+    events = set_ak_column(events, "cutflow.n_jet", self[var_nJet](events))
+    events = set_ak_column(events, "cutflow.ht", self[var_HT](events))
+    events = set_ak_column(events, "cutflow.jet1_pt", Route("Jet.pt[:,0]").apply(events, EMPTY_FLOAT))
+
+    return events
 
 
 # selection for the main categories
@@ -153,7 +154,12 @@ def sel_1mu_ge2b_highHT(self: Selector, events: ak.Array, **kwargs) -> ak.Array:
 
 
 @selector(uses={req_jet}, produces={"jet_high_multiplicity"}, exposed=True)
-def jet_selection_test(self: Selector, events: ak.Array, stats: defaultdict, **kwargs) -> SelectionResult:
+def jet_selection_test(
+    self: Selector,
+    events: ak.Array,
+    stats: defaultdict,
+    **kwargs,
+) -> Tuple[ak.Array, SelectionResult]:
     # example cuts:
     # - require at least 4 jets with pt>30, eta<2.4
     # example columns:
@@ -163,28 +169,38 @@ def jet_selection_test(self: Selector, events: ak.Array, stats: defaultdict, **k
     jet_sel = ak.num(jet_indices, axis=1) >= 4
 
     jet_high_multiplicity = ak.num(jet_indices, axis=1) >= 6
-    set_ak_column(events, "jet_high_multiplicity", jet_high_multiplicity)
+    events = set_ak_column(events, "jet_high_multiplicity", jet_high_multiplicity)
 
     # build and return selection results plus new columns
-    return SelectionResult(
+    return events, SelectionResult(
         steps={"Jet": jet_sel},
         objects={"Jet": {"Jet": jet_indices}},
     )
 
 
 @selector(uses={req_deepjet}, exposed=True)
-def deepjet_selection_test(self: Selector, events: ak.Array, stats: defaultdict, **kwargs) -> SelectionResult:
+def deepjet_selection_test(
+    self: Selector,
+    events: ak.Array,
+    stats: defaultdict,
+    **kwargs,
+) -> Tuple[ak.Array, SelectionResult]:
     deepjet_indices = self[req_deepjet](events)
     deepjet_sel = ak.num(deepjet_indices, axis=1) >= 1
 
-    return SelectionResult(
+    return events, SelectionResult(
         steps={"Deepjet": deepjet_sel},
         objects={"Jet": {"Deepjet": deepjet_indices}},
     )
 
 
 @selector(uses={req_muon}, exposed=True)
-def muon_selection_test(self: Selector, events: ak.Array, stats: defaultdict, **kwargs) -> ak.Array:
+def muon_selection_test(
+    self: Selector,
+    events: ak.Array,
+    stats: defaultdict,
+    **kwargs,
+) -> Tuple[ak.Array, Selector]:
     # example cuts:
     # - require exactly one muon with pt>25, eta<2.4 and tight Id
 
@@ -192,14 +208,19 @@ def muon_selection_test(self: Selector, events: ak.Array, stats: defaultdict, **
     muon_sel = ak.num(muon_indices, axis=1) == 1
 
     # build and return selection results
-    return SelectionResult(
+    return events, SelectionResult(
         steps={"Muon": muon_sel},
         objects={"Muon": {"Muon": muon_indices}},
     )
 
 
 @selector(uses={req_electron}, exposed=True)
-def electron_selection_test(self: Selector, events: ak.Array, stats: defaultdict, **kwargs) -> SelectionResult:
+def electron_selection_test(
+    self: Selector,
+    events: ak.Array,
+    stats: defaultdict,
+    **kwargs,
+) -> Tuple[ak.Array, SelectionResult]:
     # example cuts:
     # - require exactly one muon with pt>25, eta<2.4 and tight Id
 
@@ -207,14 +228,19 @@ def electron_selection_test(self: Selector, events: ak.Array, stats: defaultdict
     electron_sel = ak.num(electron_indices, axis=1) == 1
 
     # build and return selection results
-    return SelectionResult(
+    return events, SelectionResult(
         steps={"Electron": electron_sel},
         objects={"Electron": {"Electron": electron_indices}},
     )
 
 
 @selector(uses={req_muon, req_electron}, exposed=True)
-def lepton_selection_test(self: Selector, events: ak.Array, stats: defaultdict, **kwargs) -> SelectionResult:
+def lepton_selection_test(
+    self: Selector,
+    events: ak.Array,
+    stats: defaultdict,
+    **kwargs,
+) -> Tuple[ak.Array, SelectionResult]:
     # example cuts:
     # - require exactly one lepton with pt>25, eta<2.4 and tight Id
 
@@ -223,13 +249,13 @@ def lepton_selection_test(self: Selector, events: ak.Array, stats: defaultdict, 
     lepton_sel = ak.num(muon_indices, axis=1) + ak.num(electron_indices, axis=1) == 1
 
     # build and return selection results
-    return SelectionResult(
+    return events, SelectionResult(
         steps={"Lepton": lepton_sel},
         objects={"Muon": {"Muon": muon_indices}, "Electron": {"Electron": electron_indices}},
     )
 
 
-@selector(uses={"LHEWeight.originalXWGTUP"})
+@selector(uses={"mc_weight"})
 def increment_stats(
     self: Selector,
     events: ak.Array,
@@ -250,7 +276,7 @@ def increment_stats(
 
     # store sum of event weights for mc events
     if self.dataset_inst.is_mc:
-        weights = events.LHEWeight.originalXWGTUP
+        weights = events.mc_weight
 
         # sum for all processes
         stats["sum_mc_weight"] += ak.sum(weights)
@@ -271,11 +297,11 @@ def increment_stats(
 @selector(
     uses={
         category_ids, jet_selection_test, lepton_selection_test, deepjet_selection_test,
-        process_ids, increment_stats, "LHEWeight.originalXWGTUP", cutflow_features,
+        process_ids, increment_stats, cutflow_features,
     },
     produces={
         category_ids, jet_selection_test, lepton_selection_test, deepjet_selection_test,
-        process_ids, increment_stats, "LHEWeight.originalXWGTUP", cutflow_features,
+        process_ids, increment_stats, cutflow_features,
     },
     shifts={
         jet_energy_shifts,
@@ -287,7 +313,7 @@ def test(
     events: ak.Array,
     stats: defaultdict,
     **kwargs,
-) -> SelectionResult:
+) -> Tuple[ak.Array, SelectionResult]:
     # example cuts:
     # - jet_selection_test
     # - lepton_selection_test
@@ -299,15 +325,15 @@ def test(
     results = SelectionResult()
 
     # jet selection
-    jet_results = self[jet_selection_test](events, stats, **kwargs)
+    events, jet_results = self[jet_selection_test](events, stats, **kwargs)
     results += jet_results
 
     # lepton selection
-    lepton_results = self[lepton_selection_test](events, stats, **kwargs)
+    events, lepton_results = self[lepton_selection_test](events, stats, **kwargs)
     results += lepton_results
 
     # deep jet selection
-    deepjet_results = self[deepjet_selection_test](events, stats, **kwargs)
+    events, deepjet_results = self[deepjet_selection_test](events, stats, **kwargs)
     results += deepjet_results
 
     # combined event selection after all steps
@@ -319,18 +345,18 @@ def test(
     results.main["event"] = event_sel
 
     # build categories
-    self[category_ids](events, **kwargs)
+    events = self[category_ids](events, **kwargs)
 
     # create process ids
-    self[process_ids](events, **kwargs)
+    events = self[process_ids](events, **kwargs)
 
     # include cutflow variables
-    self[cutflow_features](events, **kwargs)
+    events = self[cutflow_features](events, **kwargs)
 
     # increment stats
     self[increment_stats](events, event_sel, stats, **kwargs)
 
-    return results
+    return events, results
 
 
 # deltaR cleaning

@@ -5,6 +5,7 @@ Calibration methods for testing purposes.
 """
 
 from columnflow.calibration import Calibrator, calibrator
+from columnflow.production.mc_weight import mc_weight
 from columnflow.production.seeds import deterministic_seeds
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column
@@ -37,21 +38,21 @@ def jec_test(self: Calibrator, events: ak.Array, **kwargs) -> ak.Array:
     n_jet_mass[~a_mask] *= 0.9
 
     # b)
-    set_ak_column(events, "Jet.pt_jec_up", events.Jet.pt * 1.05)
-    set_ak_column(events, "Jet.mass_jec_up", events.Jet.mass * 1.05)
-    set_ak_column(events, "Jet.pt_jec_down", events.Jet.pt * 0.95)
-    set_ak_column(events, "Jet.mass_jec_down", events.Jet.mass * 0.95)
+    events = set_ak_column(events, "Jet.pt_jec_up", events.Jet.pt * 1.05)
+    events = set_ak_column(events, "Jet.mass_jec_up", events.Jet.mass * 1.05)
+    events = set_ak_column(events, "Jet.pt_jec_down", events.Jet.pt * 0.95)
+    events = set_ak_column(events, "Jet.mass_jec_down", events.Jet.mass * 0.95)
 
     return events
 
 
 @calibrator(
-    uses={jec_test, deterministic_seeds},
-    produces={jec_test, deterministic_seeds},
+    uses={mc_weight, jec_test, deterministic_seeds},
+    produces={mc_weight, jec_test, deterministic_seeds},
 )
 def test(self: Calibrator, events: ak.Array, **kwargs) -> ak.Array:
-    self[jec_test](events, **kwargs)
-
-    self[deterministic_seeds](events, **kwargs)
+    events = self[mc_weight](events, **kwargs)
+    events = self[deterministic_seeds](events, **kwargs)
+    events = self[jec_test](events, **kwargs)
 
     return events

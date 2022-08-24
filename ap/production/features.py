@@ -29,13 +29,13 @@ ak = maybe_import("awkward")
     },
 )
 def features(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
-    set_ak_column(events, "ht", ak.sum(events.Jet.pt, axis=1))
-    set_ak_column(events, "n_jet", ak.num(events.Jet.pt, axis=1))
-    set_ak_column(events, "n_electron", ak.num(events.Electron.pt, axis=1))
-    set_ak_column(events, "n_muon", ak.num(events.Muon.pt, axis=1))
-    set_ak_column(events, "n_deepjet", ak.num(events.Jet.pt[events.Jet.btagDeepFlavB > 0.3], axis=1))
+    events = set_ak_column(events, "ht", ak.sum(events.Jet.pt, axis=1))
+    events = set_ak_column(events, "n_jet", ak.num(events.Jet.pt, axis=1))
+    events = set_ak_column(events, "n_electron", ak.num(events.Electron.pt, axis=1))
+    events = set_ak_column(events, "n_muon", ak.num(events.Muon.pt, axis=1))
+    events = set_ak_column(events, "n_deepjet", ak.num(events.Jet.pt[events.Jet.btagDeepFlavB > 0.3], axis=1))
 
     # add event weights
-    self[event_weights](events, **kwargs)
+    events = self[event_weights](events, **kwargs)
 
     return events
